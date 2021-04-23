@@ -1,0 +1,64 @@
+# serverless.yml
+
+service: ti-api-assets
+
+custom:
+  params:
+    userPoolArn: ${ssm:/${opt:stage, 'dev'}/auth/cognito/userPool/arn}
+    cognitoUserPool: ${ssm:/${opt:stage, 'dev'}/auth/cognito/userPool/id}
+    cognitoClientId: ${ssm:/${opt:stage, 'dev'}/auth/cognito/client/id}
+    investimentsTable: ${ssm:/${opt:stage, 'dev'}/dynamoDB/table/investiments}
+    investimentsTableArn: ${ssm:/${opt:stage, 'dev'}/dynamoDB/table/investiments/arn}
+    authApi: https://nbvxij0q0h.execute-api.us-east-1.amazonaws.com/${opt:stage, 'dev'}
+  corsMethods: 'GET,OPTIONS,POST'
+  corsHeaders: 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+  corsOrigins: '*'
+  serverless-offline:
+    httpPort: 5052
+    lambdaPort: 5053
+    host: 0.0.0.0
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  environment:
+    AUTH_API: '${self:custom.params.authApi}'
+    INVESTIMENTS_TABLE: '${self:custom.params.investimentsTable}'
+  stackTags:
+    "ti:app": "Toro Investimentos"
+    "ti:stage-name": ${opt:stage, 'dev'}
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'dynamodb:BatchGetItem'
+        - 'dynamodb:BatchWriteItem'
+        - 'dynamodb:GetItem'
+        - 'dynamodb:GetRecords'
+        - 'dynamodb:PutItem'
+        - 'dynamodb:Query'
+        - 'dynamodb:Scan'
+        - 'dynamodb:UpdateItem'
+      Resource:
+        - '${self:custom.params.investimentsTableArn}'
+functions:
+  app:
+    handler: index.handler
+    description: API for manage auth
+    events:
+      - http:
+          method: GET
+          path: '/assets/{email}'
+          cors: true
+          private: false
+package:
+  exclude:
+    - ./**
+  include:
+    - node_modules/**
+    - src/**
+    - ./index.js
+
+plugins:
+  - serverless-offline
